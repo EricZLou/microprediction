@@ -27,6 +27,9 @@ def wait_between_attempts():
 
 wait_time = wait_between_attempts()
 
+prev_data = None
+data_idx = 0
+idx = None
 
 def fetch_live_data():
     while True:
@@ -38,6 +41,14 @@ def fetch_live_data():
                     # most recent data is at line number 3 in the file
                     if i == 2:
                         data = line.decode("utf-8").split()
+                        if prev_data == data:
+                            idx -= 2
+                        else:
+                            prev_data = data
+                            idx = 6
+                        break
+                for i, line in enumerate(file):
+                    if i == idx:
                         direction = float(data[5]) / 360        # normalize between [0, 1)
                         speed = float(data[6]) / 10             # attempt to normalize
                         return speed, direction
@@ -70,7 +81,7 @@ def poll_and_send():
 def run():
     print('Starting scheduler',flush=True)
     scheduler = BlockingScheduler()
-    scheduler.add_job(poll_and_send, 'interval', minutes=1)
+    scheduler.add_job(poll_and_send, 'interval', minutes=20)
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
