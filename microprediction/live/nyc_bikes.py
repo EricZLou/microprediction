@@ -80,10 +80,8 @@ def hospital_bike_activity(station_ids):
     while datetime.now() < end_time:
         time.sleep(2 * 60)
         curr = fetch_live_data(keys=station_ids, field="num_bikes_available")
-        print(curr, flush=True)
         for i in range(len(station_ids)):
             activity += abs(curr[i] - prev[i])
-        print(activity, flush=True)
         prev = curr
     return activity
 
@@ -93,7 +91,6 @@ NAME = 'hospital_bike_activity.json'
 
 station_ids = get_station_ids()
 print("Station IDs: {}".format(station_ids), flush=True)
-print("Initial activity is " + str(0), flush=True)
 
 
 def run():
