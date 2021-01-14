@@ -29,13 +29,14 @@ def wait_between_attempts():
 wait_time = wait_between_attempts()
 
 prev_data = None
-data_idx = 0
 idx = None
 
 def fetch_live_data():
+    global prev_data
+    global idx
     while True:
         try:
-            file = urllib.request.urlopen("https://www.ndbc.noaa.gov/data/realtime2/WPOW1.cwind")
+            file = urllib.request.urlopen("https://www.ndbc.noaa.gov/data/5day2/WPOW1_5day.cwind")
             if file.status==200:
                 # NOTE: file is not indexable
                 for i, line in enumerate(file):
