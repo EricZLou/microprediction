@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 # Number of bikes available near large Manhattan hospitals
-# longitude and latitude of rectangles within 500 feet of hospital
+# latitude and longitude of rectangles within 500 feet of hospital
 # citibike map: https://member.citibikenyc.com/map/
 COORDS = [
     ((40.787880, -73.955862), (40.792001, -73.948389)),     # Mount Sinai - station_ids: 3345, 3299, 3363
@@ -41,48 +41,47 @@ wait_time = wait_between_attempts()
 
 def get_station_ids():
     """ Given COORDS, return all station_ids that fall within the rectangles """
-    station_ids = []
+    all_station_ids = []
     while True:
         try:
-            r = requests.get("https://feeds.citibikenyc.com/stations/stations.json")
+            r = requests.get("https://gbfs.citibikenyc.com/gbfs/en/station_information.json")
             if r.status_code==200:
-                data = r.json()
+                station_list = r.json()["data"]["stations"]
                 for c1, c2 in COORDS:
-                    station_data = [ 
-                        d for d in data["stationBeanList"] \
-                        if d["latitude"] > c1[0] and d["latitude"] < c2[0] \
-                        and d["longitude"] > c1[1] and d["longitude"] < c2[1]
+                    station_ids = [ 
+                        d["station_id"] for d in station_list \
+                        if d["lat"] > c1[0] and d["lat"] < c2[0] \
+                        and d["lon"] > c1[1] and d["lon"] < c2[1]
                     ]
-                    for station in station_data:
-                        station_ids.append(int(station["id"]))
-                return station_ids
+                    for station_id in station_ids:
+                        all_station_ids.append(station_id)
+                return all_station_ids
         except requests.exceptions.RequestException as e:
             logger.error("Connection error %s: reconnecting..." % e)
             time.sleep(next(wait_time))
-    return station_ids
+    return all_station_ids
 
 def fetch_live_data(keys,field):
     """ Given list of station_ids as input, returns list of station[field] """
     while True:
         try:    
-            r = requests.get("https://feeds.citibikenyc.com/stations/stations.json")
+            r = requests.get("https://gbfs.citibikenyc.com/gbfs/en/station_status.json")
             if r.status_code==200:
-                data = r.json()
-                station_data = [ d for d in data["stationBeanList"] if int(d["id"]) in keys ]
-                return [ station[field] for station in station_data ]
+                data_list = r.json()["data"]["stations"]
+                return [ d[field] for d in data_list if d["station_id"] in keys ]
         except requests.exceptions.RequestException as e:
             logger.error("Connection error %s: reconnecting..." % e)
             time.sleep(next(wait_time))
 
 
 def hospital_bike_activity(station_ids):
-    prev = fetch_live_data(keys=station_ids,field="availableBikes")
+    prev = fetch_live_data(keys=station_ids, field="num_bikes_available")
     end_time = datetime.now() + timedelta(minutes = 20)
     activity = 0
     # measure activity change every 2 minutes for 20 minutes
     while datetime.now() < end_time:
         time.sleep(2 * 60)
-        curr = fetch_live_data(keys=station_ids,field="availableBikes")
+        curr = fetch_live_data(keys=station_ids, field="num_bikes_available")
         for i in range(len(station_ids)):
             activity += abs(curr[i] - prev[i])
         prev = curr
@@ -93,7 +92,7 @@ def hospital_bike_activity(station_ids):
 NAME = 'hospital_bike_activity.json'
 
 station_ids = get_station_ids()
-print("Initial activity is " + str(0), flush=True)
+print("Station IDs: {}".format(station_ids), flush=True)
 
 
 def run():
